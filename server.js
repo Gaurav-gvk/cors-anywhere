@@ -25,7 +25,7 @@ cors_proxy.createServer({
   originBlacklist: originBlacklist,
   originWhitelist: [],
   requireHeader: [],
-  removeHeaders: [],
+  removeHeaders: ['user-agent', 'origin', 'referer'],  // 🔥 remove originals
   checkRateLimit: checkRateLimit,
 
   setHeaders: {

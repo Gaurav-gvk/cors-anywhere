@@ -22,8 +22,8 @@ var checkRateLimit = require('./lib/rate-limit')(process.env.CORSANYWHERE_RATELI
 var cors_proxy = require('./lib/cors-anywhere');
 cors_proxy.createServer({
   originBlacklist: originBlacklist,
-  originWhitelist: originWhitelist,  // Can still be [] or from env
-  requireHeader: [],                 // Already good
+  originWhitelist: originWhitelist,  // keep for env var support
+  requireHeader: [],                 // no required headers – good
   checkRateLimit: checkRateLimit,
   removeHeaders: [
     'cookie',
@@ -38,19 +38,24 @@ cors_proxy.createServer({
   httpProxyOptions: {
     xfwd: false,
   },
-  // Custom origin validator: Allow empty/missing Origin (key fix for your app)
-  origin: function (origin, callback) {
-    // Allow requests with no Origin header (e.g., Android WebView, file://, some native apps)
-    if (!origin || origin === '' || origin === 'null') {
+
+  // Stronger custom origin handler – explicitly allow empty/missing
+  origin: function(origin, callback) {
+    // Treat missing, empty, null, or 'null' as allowed (common in players/direct access)
+    if (origin == null || origin === '' || origin === 'null') {
+      console.log('Allowing request with missing/empty Origin'); // optional log for debugging
       return callback(null, true);
     }
-    // For non-empty origins, apply whitelist (if set)
+
+    // For non-empty origins: apply whitelist (allow all if empty array)
     if (originWhitelist.length === 0 || originWhitelist.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('The origin "' + origin + '" was not whitelisted by the operator of this proxy.'));
+      return callback(null, true);
     }
+
+    // Reject mismatched non-empty origins
+    return callback(new Error('The origin "' + origin + '" was not whitelisted by the operator of this proxy.'));
   },
+
 }).listen(port, host, function() {
   console.log('Running CORS Anywhere on ' + host + ':' + port);
 });

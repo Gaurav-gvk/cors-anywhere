@@ -44,6 +44,18 @@ cors_proxy.createServer({
     // Do not add X-Forwarded-For, etc. headers, because Heroku already adds it.
     xfwd: false,
   },
+  origin: function(origin, callback) {
+    if (!origin || origin === '') {
+      // Allow requests with no Origin (e.g., your Android app/WebView)
+      return callback(null, true);
+    }
+    // Otherwise, fall back to normal whitelist check
+    if (originWhitelist.length === 0 || originWhitelist.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('The origin "' + origin + '" was not whitelisted by the operator of this proxy.'));
+    }
+  },
 }).listen(port, host, function() {
   console.log('Running CORS Anywhere on ' + host + ':' + port);
 });

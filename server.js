@@ -21,39 +21,16 @@ var checkRateLimit = require('./lib/rate-limit')(process.env.CORSANYWHERE_RATELI
 
 var cors_proxy = require('./lib/cors-anywhere');
 cors_proxy.createServer({
-  originBlacklist: originBlacklist,
-  originWhitelist: originWhitelist,  // keep for env var support
-  requireHeader: [],                 // no required headers – good
-  checkRateLimit: checkRateLimit,
-  removeHeaders: [
-    'cookie',
-    'cookie2',
-    'x-request-start',
-    'x-request-id',
-    'via',
-    'connect-time',
-    'total-route-time',
-  ],
-  redirectSameOrigin: true,
-  httpProxyOptions: {
-    xfwd: false,
-  },
+  // ... your existing config (origin function, whitelist, etc.)
 
-  // Stronger custom origin handler – explicitly allow empty/missing
-  origin: function(origin, callback) {
-    // Treat missing, empty, null, or 'null' as allowed (common in players/direct access)
-    if (origin == null || origin === '' || origin === 'null') {
-      console.log('Allowing request with missing/empty Origin'); // optional log for debugging
-      return callback(null, true);
-    }
+  // Add this: Middleware to inject headers for all proxied requests
+  requestMiddleware: function (req, res, next) {
+    // Spoof common Astro-allowed headers (adjust as needed)
+    req.headers['user-agent'] = 'Mozilla/5.0 (Linux; Android 13; UltraBox Build/TP1A.220624.014; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/136.0.7103.61 Mobile Safari/537.36';
+    req.headers['referer'] = 'https://www.astro.com.my/';
+    req.headers['origin'] = 'https://www.astro.com.my';  // if needed
 
-    // For non-empty origins: apply whitelist (allow all if empty array)
-    if (originWhitelist.length === 0 || originWhitelist.includes(origin)) {
-      return callback(null, true);
-    }
-
-    // Reject mismatched non-empty origins
-    return callback(new Error('The origin "' + origin + '" was not whitelisted by the operator of this proxy.'));
+    next();
   },
 
 }).listen(port, host, function() {

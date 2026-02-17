@@ -22,35 +22,30 @@ var checkRateLimit = require('./lib/rate-limit')(process.env.CORSANYWHERE_RATELI
 var cors_proxy = require('./lib/cors-anywhere');
 cors_proxy.createServer({
   originBlacklist: originBlacklist,
-  originWhitelist: originWhitelist,
-  requireHeader: [],
+  originWhitelist: originWhitelist,  // Can still be [] or from env
+  requireHeader: [],                 // Already good
   checkRateLimit: checkRateLimit,
   removeHeaders: [
     'cookie',
     'cookie2',
-    // Strip Heroku-specific headers
     'x-request-start',
     'x-request-id',
     'via',
     'connect-time',
     'total-route-time',
-    // Other Heroku added debug headers
-    // 'x-forwarded-for',
-    // 'x-forwarded-proto',
-    // 'x-forwarded-port',
   ],
   redirectSameOrigin: true,
   httpProxyOptions: {
-    // Do not add X-Forwarded-For, etc. headers, because Heroku already adds it.
     xfwd: false,
   },
-  origin: function(origin, callback) {
-    if (!origin || origin === '') {
-      // Allow requests with no Origin (e.g., your Android app/WebView)
+  // Custom origin validator: Allow empty/missing Origin (key fix for your app)
+  origin: function (origin, callback) {
+    // Allow requests with no Origin header (e.g., Android WebView, file://, some native apps)
+    if (!origin || origin === '' || origin === 'null') {
       return callback(null, true);
     }
-    // Otherwise, fall back to normal whitelist check
-    if (originWhitelist.length === 0 || originWhitelist.indexOf(origin) !== -1) {
+    // For non-empty origins, apply whitelist (if set)
+    if (originWhitelist.length === 0 || originWhitelist.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error('The origin "' + origin + '" was not whitelisted by the operator of this proxy.'));
